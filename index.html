@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ Phân tích Mã Bán chạy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fa; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .table { font-size: 14px; }
+        .table th, .table td { padding: 12px; vertical-align: middle; text-align: center; }
+        .table th { background: #e9ecef; cursor: pointer; }
+        .table th:hover { background: #dee2e6; }
+        .top-10 { background: #fff3cd; font-weight: bold; }
+        .total-row { 
+            background: #c3e6cb !important;
+            font-weight: 700 !important;
+            border: 2px solid #6c757d !important;
+        }
+        .error { color: red; margin: 15px 0; font-weight: 600; }
+        .invalid-list { font-size: 0.85em; margin-top: 5px; }
+        .guide-card { background: #ffffff; border: 1px solid #dee2e6; margin-top: 20px; }
+        .btn { padding: 10px 20px; }
+        .form-label { font-weight: bold; }
+        .nav-tabs .nav-link.active { font-weight: bold; background-color: #f8f9fa; }
+        .tab-content { background-color: #fff; padding: 20px; border: 1px solid #dee2e6; border-top: none; }
+        .set-code { color: #0d6efd; font-weight: bold; }
+        .single-code { color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Công cụ Phân tích Mã Bán chạy</h1>
+        <div class="mb-4">
+            <div class="mb-3">
+                <label for="adsFile" class="form-label">Tệp Quảng cáo (CSV/Excel, tùy chọn):</label></br> <span style="color: blue;">(Xuất từ trình quản lý quảng cáo)</span>
+                <input type="file" id="adsFile" accept=".csv,.xlsx" class="form-control">
+                <small class="form-text text-muted">Xuất từ trình quản lý quảng cáo</small>
+            </div>
+            <div class="mb-3">
+                <label for="ordersFile" class="form-label">Tệp Đơn hàng (CSV/Excel, tùy chọn):</label></br>
+                <a href="https://nhanh.vn/order/manage/index?storeId=121646&isConvertCommonDate=1&saleChannel%5B%5D=1&type%5B%5D=1&type%5B%5D=17&type%5B%5D=3&trafficSourceId%5B%5D=2701&trafficSourceId%5B%5D=3435&trafficSourceId%5B%5D=3441&trafficSourceId%5B%5D=3442&trafficSourceId%5B%5D=3461&fromDate=18%2F06%2F2025&toDate=24%2F06%2F2025" target="_blank">Link tải Đơn hàng - Nhanh.vn (Chọn lại Nguồn và Khoảng ngày)</a>
+                <input type="file" id="ordersFile" accept=".csv,.xlsx" class="form-control">
+                <small class="form-text text-muted">Link tải Đơn hàng - Nhanh.vn (Chọn lại Nguồn và Khoảng ngày)</small>
+            </div>
+            <button id="analyzeBtn" class="btn btn-primary">Phân tích dữ liệu</button>
+        </div>
+        <div id="error" class="error"></div>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="single-tab" data-bs-toggle="tab" data-bs-target="#single" type="button" role="tab" aria-controls="single" aria-selected="true">Mã Lẻ</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="set-tab" data-bs-toggle="tab" data-bs-target="#set" type="button" role="tab" aria-controls="set" aria-selected="false">Mã Set (và Lẻ)</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="single" role="tabpanel" aria-labelledby="single-tab">
+                <div id="output-single"></div>
+            </div>
+            <div class="tab-pane fade" id="set" role="tabpanel" aria-labelledby="set-tab">
+                <div id="output-set"></div>
+            </div>
+        </div>
+        
+        <div class="guide-card card p-3">
+            <h5>Hướng dẫn sử dụng</h5>
+            <ul>
+                <li>Tải lên file quảng cáo Facebook và/hoặc file đơn hàng (cả hai đều tùy chọn).</li>
+                <li>Nhấn nút "Phân tích dữ liệu" để xử lý dữ liệu.</li>
+                <li>Xem kết quả phân tích trong bảng, với dòng tổng số ở đầu.</li>
+                <li>10 mã sản phẩm bán chạy nhất sẽ được làm nổi bật.</li>
+                <li>Có thể copy dữ liệu hoặc xuất ra Excel.</li>
+            </ul>
+            <h6>Lưu ý:</h6>
+            <ul>
+                <li>Tab Mã Lẻ: Hiển thị tất cả các mã riêng lẻ</li>
+                <li>Tab Mã Set: Hiển thị cả mã set (ghép cặp) và mã lẻ (đơn lẻ)</li>
+                <li>Mã set (VD: H331207I - B730291I hoặc H331207I + B730291I) sẽ được hiển thị cùng với các mã lẻ</li>
+                <li>Nếu có file đơn hàng, số lượng bán và doanh số sẽ ưu tiên lấy từ file này</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Thêm thư viện JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Định nghĩa các hàm helper
+        function formatNumber(num) { 
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); 
+        }
+        
+        function setError(msg, invalidList = []) { 
+            const errorDiv = document.getElementById('error');
+            errorDiv.innerHTML = msg;
+            if (invalidList.length > 0) {
+                errorDiv.innerHTML += `<div class="invalid-list">${invalidList.map(item => item || 'undefined').join('<br>')}</div>`;
+            }
+        }
+        
+        function clearError() { 
+            document.getElementById('error').innerHTML = ''; 
+        }
+        
+        function normalizeString(str) { 
+            if (!str) return '';
+            return str.toLowerCase()
+                .replace(/[\s-_()]+/g, '')
+                .replace(/[\n\r\t\u200B-\u200F\uFEFF]+/g, '')
+                .replace(/[^a-z0-9]/g, '')
+                .replace(/vnd/g, '');
+        }
+        
+        function cleanColumnName(str) {
+            if (!str) return '';
+            return str.replace(/[\n\r\t\u200B-\u200F\uFEFF]+/g, ' ')
+                     .replace(/\s+/g, ' ')
+                     .trim();
+        }
+        
+        function identifyColumn(cols, names) {
+            const normalizedCols = cols.map(c => ({ original: c, normalized: normalizeString(c) }));
+            for (let name of names) {
+                const normName = normalizeString(name);
+                const match = normalizedCols.find(c => c.normalized === normName);
+                if (match) {
+                    return match.original;
+                }
+            }
+            return null;
+        }
+        
+        function parseDate(str) { 
+            if (!str) return null;
+            const formats = [/\d{4}-\d{2}-\d{2}/, /\d{2}\/\d{2}\/\d{4}/, /\d{2}-\d{2}-\d{4}/]; 
+            for (let f of formats) {
+                if (f.test(str)) return new Date(str);
+            }
+            return null; 
+        }
+        
+        function extractProductCodes(campaigns) {
+            const singleCodeRegex = /^(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?$/;
+            const validCodes = [];
+            const validSets = [];
+            const invalidCampaignsList = [];
+            
+            try {
+                campaigns.forEach(name => {
+                    if (!name || typeof name !== 'string') {
+                        invalidCampaignsList.push(name || 'undefined');
+                        return;
+                    }
+                    if (/BST/i.test(name)) return;
+                    
+                    const cleanName = name.replace(/\s+/g, ' ').trim();
+                    
+                    // Tìm các mã set với cả dấu - và +
+                    let sets = cleanName.match(/(?:(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?)(?:\s*[-+]\s*(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?)?/gi) || [];
+                    
+                    if (!sets.length) {
+                        const singleMatch = cleanName.match(/(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?/g) || [];
+                        if (singleMatch.length >= 2) {
+                            sets = [singleMatch.slice(0, 2).join(' - ')];
+                        } else if (singleMatch.length === 1) {
+                            sets = singleMatch;
+                        }
+                    }
+                    
+                    if (sets.length) {
+                        sets.forEach(code => {
+                            let normalized = code.replace(/[-+]$/,'').trim().toUpperCase();
+                            
+                            // Kiểm tra cả dấu - và +
+                            if (normalized.match(/[-+]/)) {
+                                const separator = normalized.match(/[-+]/)[0]; // Lấy dấu phân cách
+                                const [c1, c2] = normalized.split(/\s*[-+]\s*/);
+                                if (singleCodeRegex.test(c1) && singleCodeRegex.test(c2)) {
+                                    validCodes.push(c1, c2);
+                                    validSets.push(`${c1} ${separator} ${c2}`);
+                                }
+                            } else if (singleCodeRegex.test(normalized)) {
+                                validCodes.push(normalized);
+                            }
+                        });
+                    } else {
+                        invalidCampaignsList.push(name);
+                    }
+                });
+            } catch (e) {
+                console.error('Error in extractProductCodes:', e);
+                setError('Lỗi xử lý mã sản phẩm: ' + e.message);
+            }
+            
+            if (invalidCampaignsList.length > 0) {
+                setError(`Cảnh báo: Có ${invalidCampaignsList.length} chiến dịch không chứa tên mã`, invalidCampaignsList);
+            }
+            
+            return { 
+                codes: [...new Set(validCodes)],
+                sets: [...new Set(validSets)]
+            };
+        }
+        
+        function generateTableHTML(data, title, idPrefix, isCombinedTab = false) {
+            const total = data.reduce((acc, r) => {
+                acc.spend += r.spend;
+                acc.mess += r.mess;
+                acc.costPerMess = acc.mess > 0 ? Math.round(acc.spend / acc.mess) : 0;
+                acc.orders += r.orders;
+                acc.revenue += r.revenue;
+                acc.conversionRate = acc.mess > 0 ? (acc.orders / acc.mess * 100).toFixed(2) : 0;
+                acc.costPerRevenue = acc.revenue > 0 ? (acc.spend / acc.revenue * 100).toFixed(2) : 0;
+                acc.costPerOrder = acc.orders > 0 ? Math.round(acc.spend / acc.orders) : 0;
+                return acc;
+            }, { spend: 0, mess: 0, costPerMess: 0, orders: 0, revenue: 0, conversionRate: 0, costPerRevenue: 0, costPerOrder: 0 });
+            
+            const top10 = [...data].sort((a, b) => b.revenue - a.revenue).slice(0, 10).map(r => r.parentCode);
+            
+            let html = `<div class="mb-3"><h4>${title}</h4><button onclick="exportToExcel('${idPrefix}')" class="btn btn-success">Xuất Excel</button></div>`;
+            html += `<table class="table table-bordered"><thead><tr>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 0)">${isCombinedTab ? 'Mã SP/Set' : 'Mã SP'}</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 1)">Số ngày chạy</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 2)">Chi phí (VND)</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 3)">Số Mess</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 4)">Chi phí/Mess</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 5)">Số lượng bán</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 6)">Doanh số (VND)</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 7)">Tỉ lệ chốt (%)</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 8)">% Chi phí/Doanh số</th>`;
+            html += `<th onclick="copyColumn('${idPrefix}', 9)">Chi phí/SL Bán</th>`;
+            html += `</tr></thead><tbody>`;
+            html += `<tr class="total-row">`;
+            html += `<td>Tổng</td>`;
+            html += `<td>-</td>`;
+            html += `<td>${formatNumber(total.spend)}</td>`;
+            html += `<td>${total.mess}</td>`;
+            html += `<td>${formatNumber(total.costPerMess)}</td>`;
+            html += `<td>${total.orders}</td>`;
+            html += `<td>${formatNumber(total.revenue)}</td>`;
+            html += `<td>${total.conversionRate}%</td>`;
+            html += `<td>${total.costPerRevenue}%</td>`;
+            html += `<td>${formatNumber(total.costPerOrder)}</td>`;
+            html += `</tr>`;
+            
+            data.forEach(r => {
+                const isTop = top10.includes(r.parentCode);
+                const isSet = r.isSet || false;
+                html += `<tr class="${isTop ? 'top-10' : ''}">`;
+                html += `<td class="${isSet ? 'set-code' : 'single-code'}">${r.parentCode}</td>`;
+                html += `<td>${r.days}</td>`;
+                html += `<td>${formatNumber(r.spend)}</td>`;
+                html += `<td>${r.mess}</td>`;
+                html += `<td>${formatNumber(r.costPerMess)}</td>`;
+                html += `<td>${r.orders}</td>`;
+                html += `<td>${formatNumber(r.revenue)}</td>`;
+                html += `<td>${r.conversionRate}%</td>`;
+                html += `<td>${r.costPerRevenue}%</td>`;
+                html += `<td>${formatNumber(r.costPerOrder)}</td>`;
+                html += `</tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            return html;
+        }
+        
+        // Hàm chính xử lý file
+        async function processFiles() {
+            try {
+                clearError();
+                console.log('Bắt đầu xử lý files...');
+                
+                const adsFile = document.getElementById('adsFile').files[0];
+                const ordersFile = document.getElementById('ordersFile').files[0];
+                
+                if (!adsFile && !ordersFile) {
+                    setError('Vui lòng tải lên ít nhất một tệp (Quảng cáo hoặc Đơn hàng).');
+                    return;
+                }
+                
+                console.log('Đã nhận files:', { adsFile, ordersFile });
+                
+                // Xử lý file quảng cáo
+                const processAds = adsFile ? await (async () => {
+                    if (adsFile.name.endsWith('.csv')) {
+                        return new Promise(resolve => {
+                            Papa.parse(adsFile, {
+                                complete: e => {
+                                    const data = e.data;
+                                    if (data.length > 0) {
+                                        const rawHeaders = Object.keys(data[0]);
+                                        const cleanedHeaders = rawHeaders.map(cleanColumnName);
+                                        const newData = data.map(row => {
+                                            const newRow = {};
+                                            rawHeaders.forEach((header, i) => {
+                                                newRow[cleanedHeaders[i]] = row[header];
+                                            });
+                                            return newRow;
+                                        });
+                                        resolve(newData);
+                                    } else {
+                                        resolve([]);
+                                    }
+                                },
+                                header: true,
+                                skipEmptyLines: true,
+                                encoding: 'UTF-8'
+                            });
+                        });
+                    } else {
+                        return new Promise(resolve => {
+                            const fr = new FileReader();
+                            fr.onload = e => {
+                                const d = new Uint8Array(e.target.result);
+                                const wb = XLSX.read(d, { type: 'array' });
+                                const ws = wb.Sheets[wb.SheetNames[0]];
+                                const data = XLSX.utils.sheet_to_json(ws);
+                                if (data.length > 0) {
+                                    const rawHeaders = Object.keys(data[0]);
+                                    const cleanedHeaders = rawHeaders.map(cleanColumnName);
+                                    const newData = data.map(row => {
+                                        const newRow = {};
+                                        rawHeaders.forEach((header, i) => {
+                                            newRow[cleanedHeaders[i]] = row[header];
+                                        });
+                                        return newRow;
+                                    });
+                                    resolve(newData);
+                                } else {
+                                    resolve([]);
+                                }
+                            };
+                            fr.readAsArrayBuffer(adsFile);
+                        });
+                    }
+                })() : null;
+                
+                // Xử lý file đơn hàng
+                const processOrders = ordersFile ? await (async () => {
+                    if (ordersFile.name.endsWith('.csv')) {
+                        return new Promise(resolve => {
+                            Papa.parse(ordersFile, {
+                                complete: e => {
+                                    const data = e.data;
+                                    if (data.length > 0) {
+                                        const rawHeaders = Object.keys(data[0]);
+                                        const cleanedHeaders = rawHeaders.map(cleanColumnName);
+                                        const newData = data.map(row => {
+                                            const newRow = {};
+                                            rawHeaders.forEach((header, i) => {
+                                                newRow[cleanedHeaders[i]] = row[header];
+                                            });
+                                            return newRow;
+                                        });
+                                        resolve(newData);
+                                    } else {
+                                        resolve([]);
+                                    }
+                                },
+                                header: true,
+                                skipEmptyLines: true,
+                                encoding: 'UTF-8'
+                            });
+                        });
+                    } else {
+                        return new Promise(resolve => {
+                            const fr = new FileReader();
+                            fr.onload = e => {
+                                const d = new Uint8Array(e.target.result);
+                                const wb = XLSX.read(d, { type: 'array' });
+                                const ws = wb.Sheets[wb.SheetNames[0]];
+                                const data = XLSX.utils.sheet_to_json(ws);
+                                if (data.length > 0) {
+                                    const rawHeaders = Object.keys(data[0]);
+                                    const cleanedHeaders = rawHeaders.map(cleanColumnName);
+                                    const newData = data.map(row => {
+                                        const newRow = {};
+                                        rawHeaders.forEach((header, i) => {
+                                            newRow[cleanedHeaders[i]] = row[header];
+                                        });
+                                        return newRow;
+                                    });
+                                    resolve(newData);
+                                } else {
+                                    resolve([]);
+                                }
+                            };
+                            fr.readAsArrayBuffer(ordersFile);
+                        });
+                    }
+                })() : null;
+                
+                if ((!processAds || processAds.length === 0) && (!processOrders || processOrders.length === 0)) {
+                    setError('Các tệp tải lên rỗng hoặc không đọc được.');
+                    return;
+                }
+                
+                let codes = [];
+                let sets = [];
+                const summarySingle = {};
+                const summaryCombined = {}; // Dùng cho tab kết hợp (set + lẻ)
+                
+                // Xử lý dữ liệu quảng cáo
+                if (processAds && processAds.length > 0) {
+                    const adsCols = Object.keys(processAds[0] || {});
+                    const adsMap = {
+                        startDate: identifyColumn(adsCols, ['Bắt đầu báo cáo', 'Ngày bắt đầu']),
+                        endDate: identifyColumn(adsCols, ['Kết thúc báo cáo', 'Ngày kết thúc']),
+                        campaignName: identifyColumn(adsCols, ['Tên chiến dịch', 'Chiến dịch']),
+                        spend: identifyColumn(adsCols, ['Số tiền đã chi tiêu', 'Chi phí']),
+                        mess: identifyColumn(adsCols, ['Lượt bắt đầu cuộc trò chuyện qua tin nhắn', 'Số Mess', 'Tin nhắn']),
+                        orders: identifyColumn(adsCols, ['Lượt mua', 'Lượt mua trên Meta', 'Đơn hàng']),
+                        revenue: identifyColumn(adsCols, [
+                            'Giá trị chuyển đổi từ lượt mua',
+                            'Giá trị chuyển đổi của lượt mua trên Meta',
+                            'Giá trị chuyển đổi',
+                            'Doanh thu',
+                            'Doanh số',
+                            'Giá trị đơn hàng',
+                            'Doanh thu từ lượt mua'
+                        ])
+                    };
+                    
+                    if (!adsMap.campaignName || !adsMap.spend || !adsMap.mess) {
+                        const missingCols = [];
+                        if (!adsMap.campaignName) missingCols.push('Tên chiến dịch hoặc Chiến dịch');
+                        if (!adsMap.spend) missingCols.push('Số tiền đã chi tiêu hoặc Chi phí');
+                        if (!adsMap.mess) missingCols.push('Lượt bắt đầu cuộc trò chuyện qua tin nhắn hoặc Số Mess');
+                        if (missingCols.length > 0) {
+                            setError(`Tệp Quảng cáo thiếu cột cần thiết: ${missingCols.join(', ')}. Các cột trong file: ${adsCols.join(', ')}`);
+                        }
+                    }
+                    
+                    const campaignNames = processAds.map(r => r[adsMap.campaignName]).filter(Boolean);
+                    const extracted = extractProductCodes(campaignNames);
+                    codes = [...new Set([...codes, ...extracted.codes])];
+                    sets = [...new Set([...sets, ...extracted.sets])];
+                    
+                    processAds.forEach(r => {
+                        const name = r[adsMap.campaignName];
+                        if (!name || /BST/i.test(name)) return;
+                        
+                        const cleanName = name.replace(/\s+/g, ' ').trim();
+                        
+                        // Tìm các mã set với cả dấu - và +
+                        let campaignSets = cleanName.match(/(?:(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?)(?:\s*[-+]\s*(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?)?/gi) || [];
+                        
+                        if (!campaignSets.length) {
+                            const singleMatch = cleanName.match(/(?:OA|OD|CV|[A-Z])\d{4,6}[A-Z]?/g) || [];
+                            if (singleMatch.length >= 2) campaignSets = [singleMatch.slice(0, 2).join(' - ')];
+                            else if (singleMatch.length === 1) campaignSets = singleMatch;
+                        }
+                        
+                        if (!campaignSets.length) return;
+                        
+                        campaignSets.forEach(code => {
+                            let normalized = code.replace(/[-+]$/,'').trim().toUpperCase();
+                            const hasSeparator = normalized.match(/[-+]/);
+                            const isSet = !!hasSeparator;
+                            const separator = isSet ? hasSeparator[0] : null;
+                            const allCodes = isSet ? normalized.split(/\s*[-+]\s*/) : [normalized];
+                            const displayCode = isSet ? `${allCodes[0]} ${separator} ${allCodes[1]}` : normalized;
+                            
+                            // Xử lý cho tab Mã Lẻ (hiển thị tất cả mã, kể cả mã trong set)
+                            allCodes.forEach(c => {
+                                if (!summarySingle[c]) {
+                                    summarySingle[c] = { 
+                                        startDate: parseDate(r[adsMap.startDate]), 
+                                        endDate: parseDate(r[adsMap.endDate]), 
+                                        spend: 0, 
+                                        mess: 0, 
+                                        orders: 0, 
+                                        revenue: 0,
+                                        isPartOfSet: isSet,
+                                        setCode: isSet ? displayCode : null
+                                    };
+                                }
+                                summarySingle[c].spend += parseFloat(r[adsMap.spend]) || 0;
+                                const rawMessValue = r[adsMap.mess];
+                                const messValue = parseInt(rawMessValue);
+                                if (!isNaN(messValue)) summarySingle[c].mess += messValue;
+                                
+                                if (!processOrders && adsMap.orders) {
+                                    const orderValue = parseInt(r[adsMap.orders]);
+                                    if (!isNaN(orderValue)) summarySingle[c].orders += orderValue;
+                                }
+                                
+                                if (!processOrders && adsMap.revenue) {
+                                    const rawRevenueValue = r[adsMap.revenue];
+                                    const revenueValue = parseFloat(rawRevenueValue);
+                                    if (!isNaN(revenueValue)) summarySingle[c].revenue += revenueValue;
+                                }
+                            });
+                            
+                            // Xử lý cho tab kết hợp (set + lẻ)
+                            if (isSet) {
+                                if (!summaryCombined[displayCode]) {
+                                    summaryCombined[displayCode] = { 
+                                        startDate: parseDate(r[adsMap.startDate]), 
+                                        endDate: parseDate(r[adsMap.endDate]), 
+                                        spend: 0, 
+                                        mess: 0, 
+                                        orders: 0, 
+                                        revenue: 0,
+                                        isSet: true,
+                                        codesInSet: allCodes
+                                    };
+                                }
+                                
+                                summaryCombined[displayCode].spend += parseFloat(r[adsMap.spend]) || 0;
+                                const rawMessValue = r[adsMap.mess];
+                                const messValue = parseInt(rawMessValue);
+                                if (!isNaN(messValue)) summaryCombined[displayCode].mess += messValue;
+                                
+                                if (!processOrders && adsMap.orders) {
+                                    const orderValue = parseInt(r[adsMap.orders]);
+                                    if (!isNaN(orderValue)) summaryCombined[displayCode].orders += orderValue;
+                                }
+                                
+                                if (!processOrders && adsMap.revenue) {
+                                    const rawRevenueValue = r[adsMap.revenue];
+                                    const revenueValue = parseFloat(rawRevenueValue);
+                                    if (!isNaN(revenueValue)) summaryCombined[displayCode].revenue += revenueValue;
+                                }
+                            } else {
+                                // Thêm mã lẻ vào tab kết hợp
+                                if (!summaryCombined[normalized]) {
+                                    summaryCombined[normalized] = { 
+                                        startDate: parseDate(r[adsMap.startDate]), 
+                                        endDate: parseDate(r[adsMap.endDate]), 
+                                        spend: 0, 
+                                        mess: 0, 
+                                        orders: 0, 
+                                        revenue: 0,
+                                        isSet: false
+                                    };
+                                }
+                                
+                                summaryCombined[normalized].spend += parseFloat(r[adsMap.spend]) || 0;
+                                const rawMessValue = r[adsMap.mess];
+                                const messValue = parseInt(rawMessValue);
+                                if (!isNaN(messValue)) summaryCombined[normalized].mess += messValue;
+                                
+                                if (!processOrders && adsMap.orders) {
+                                    const orderValue = parseInt(r[adsMap.orders]);
+                                    if (!isNaN(orderValue)) summaryCombined[normalized].orders += orderValue;
+                                }
+                                
+                                if (!processOrders && adsMap.revenue) {
+                                    const rawRevenueValue = r[adsMap.revenue];
+                                    const revenueValue = parseFloat(rawRevenueValue);
+                                    if (!isNaN(revenueValue)) summaryCombined[normalized].revenue += revenueValue;
+                                }
+                            }
+                        });
+                    });
+                }
+                
+                // Xử lý dữ liệu đơn hàng
+                if (processOrders && processOrders.length > 0) {
+                    const ordCols = Object.keys(processOrders[0] || {});
+                    const ordMap = {
+                        parentCode: identifyColumn(ordCols, ['Mã sản phẩm cha', 'Mã sản phẩm', 'Parent Code']),
+                        quantity: identifyColumn(ordCols, ['Số lượng', 'Quantity']),
+                        value: identifyColumn(ordCols, ['Giá trị', 'Doanh thu', 'Value', 'Doanh số', 'Giá trị đơn hàng'])
+                    };
+                    
+                    if (!ordMap.parentCode || !ordMap.quantity || !ordMap.value) {
+                        const missingCols = [];
+                        if (!ordMap.parentCode) missingCols.push('Mã sản phẩm cha hoặc Mã sản phẩm');
+                        if (!ordMap.quantity) missingCols.push('Số lượng');
+                        if (!ordMap.value) missingCols.push('Giá trị, Doanh thu, hoặc Giá trị đơn hàng');
+                        setError(`Tệp Đơn hàng thiếu cột cần thiết: ${missingCols.join(', ')}. Các cột trong file: ${ordCols.join(', ')}`);
+                    }
+                    
+                    processOrders.forEach(r => {
+                        const pc = r[ordMap.parentCode]?.toUpperCase();
+                        if (!pc) return;
+                        
+                        codes = [...new Set([...codes, pc])];
+                        
+                        // Xử lý cho tab Mã Lẻ (hiển thị tất cả mã)
+                        if (!summarySingle[pc]) {
+                            summarySingle[pc] = { 
+                                startDate: null, 
+                                endDate: null, 
+                                spend: 0, 
+                                mess: 0, 
+                                orders: 0, 
+                                revenue: 0,
+                                isPartOfSet: false,
+                                setCode: null
+                            };
+                        }
+                        
+                        const quantityValue = parseInt(r[ordMap.quantity]);
+                        if (!isNaN(quantityValue)) summarySingle[pc].orders += quantityValue;
+                        
+                        const rawValue = r[ordMap.value];
+                        const valueValue = parseFloat(rawValue);
+                        if (!isNaN(valueValue)) summarySingle[pc].revenue += valueValue;
+                        
+                        // Xử lý cho tab kết hợp (set + lẻ)
+                        if (!summaryCombined[pc]) {
+                            summaryCombined[pc] = { 
+                                startDate: null, 
+                                endDate: null, 
+                                spend: 0, 
+                                mess: 0, 
+                                orders: 0, 
+                                revenue: 0,
+                                isSet: false
+                            };
+                        }
+                        
+                        if (!isNaN(quantityValue)) summaryCombined[pc].orders += quantityValue;
+                        if (!isNaN(valueValue)) summaryCombined[pc].revenue += valueValue;
+                        
+                        // Kiểm tra xem mã này có nằm trong set nào không
+                        const containingSets = sets.filter(s => {
+                            const setCodes = s.split(/\s*[-+]\s*/);
+                            return setCodes.includes(pc);
+                        });
+                        
+                        containingSets.forEach(setCode => {
+                            const separator = setCode.match(/[-+]/)[0]; // Lấy dấu phân cách
+                            const codesInSet = setCode.split(/\s*[-+]\s*/);
+                            const displayCode = `${codesInSet[0]} ${separator} ${codesInSet[1]}`;
+                            
+                            if (!summaryCombined[displayCode]) {
+                                summaryCombined[displayCode] = { 
+                                    startDate: null, 
+                                    endDate: null, 
+                                    spend: 0, 
+                                    mess: 0, 
+                                    orders: 0, 
+                                    revenue: 0,
+                                    isSet: true,
+                                    codesInSet: codesInSet
+                                };
+                            }
+                            
+                            if (!isNaN(quantityValue)) summaryCombined[displayCode].orders += quantityValue;
+                            if (!isNaN(valueValue)) summaryCombined[displayCode].revenue += valueValue;
+                            
+                            // Đánh dấu mã này là thuộc set
+                            summarySingle[pc].isPartOfSet = true;
+                            summarySingle[pc].setCode = displayCode;
+                        });
+                    });
+                }
+                
+                // Chuẩn bị dữ liệu cho tab Mã Lẻ (hiển thị tất cả mã)
+                const resultsSingle = Object.keys(summarySingle).map(c => {
+                    const d = summarySingle[c];
+                    const days = d.endDate && d.startDate ? Math.ceil((d.endDate - d.startDate) / (1000 * 60 * 60 * 24)) + 1 : 0;
+                    const cpm = d.mess > 0 ? Math.round(d.spend / d.mess) : 0;
+                    const cr = d.mess > 0 ? (d.orders / d.mess * 100).toFixed(2) : 0;
+                    const cpr = d.revenue > 0 ? (d.spend / d.revenue * 100).toFixed(2) : 0;
+                    const cpo = d.orders > 0 ? Math.round(d.spend / d.orders) : 0;
+                    return {
+                        parentCode: c,
+                        days,
+                        spend: d.spend,
+                        mess: d.mess,
+                        costPerMess: cpm,
+                        orders: d.orders,
+                        revenue: d.revenue,
+                        conversionRate: cr,
+                        costPerRevenue: cpr,
+                        costPerOrder: cpo,
+                        isPartOfSet: d.isPartOfSet,
+                        setCode: d.setCode
+                    };
+                }).sort((a, b) => b.orders - a.orders);
+                
+                // Chuẩn bị dữ liệu cho tab kết hợp (set + lẻ)
+                const resultsCombined = Object.keys(summaryCombined).map(c => {
+                    const d = summaryCombined[c];
+                    const days = d.endDate && d.startDate ? Math.ceil((d.endDate - d.startDate) / (1000 * 60 * 60 * 24)) + 1 : 0;
+                    const cpm = d.mess > 0 ? Math.round(d.spend / d.mess) : 0;
+                    const cr = d.mess > 0 ? (d.orders / d.mess * 100).toFixed(2) : 0;
+                    const cpr = d.revenue > 0 ? (d.spend / d.revenue * 100).toFixed(2) : 0;
+                    const cpo = d.orders > 0 ? Math.round(d.spend / d.orders) : 0;
+                    return {
+                        parentCode: c,
+                        days,
+                        spend: d.spend,
+                        mess: d.mess,
+                        costPerMess: cpm,
+                        orders: d.orders,
+                        revenue: d.revenue,
+                        conversionRate: cr,
+                        costPerRevenue: cpr,
+                        costPerOrder: cpo,
+                        isSet: d.isSet || false
+                    };
+                }).sort((a, b) => b.orders - a.orders);
+                
+                // Hiển thị kết quả
+                document.getElementById('output-single').innerHTML = generateTableHTML(resultsSingle, 'Kết quả theo Mã Lẻ', 'single');
+                document.getElementById('output-set').innerHTML = generateTableHTML(resultsCombined, 'Kết quả theo Mã Set và Lẻ', 'set', true);
+                
+                // Thêm hàm exportToExcel và copyColumn vào window
+                window.exportToExcel = function(idPrefix) {
+                    const isCombinedTab = idPrefix === 'set';
+                    const data = isCombinedTab ? resultsCombined : resultsSingle;
+                    const title = isCombinedTab ? 'Kết quả theo Mã Set và Lẻ' : 'Kết quả theo Mã Lẻ';
+                    
+                    const total = data.reduce((acc, r) => {
+                        acc.spend += r.spend;
+                        acc.mess += r.mess;
+                        acc.costPerMess = acc.mess > 0 ? Math.round(acc.spend / acc.mess) : 0;
+                        acc.orders += r.orders;
+                        acc.revenue += r.revenue;
+                        acc.conversionRate = acc.mess > 0 ? (acc.orders / acc.mess * 100).toFixed(2) : 0;
+                        acc.costPerRevenue = acc.revenue > 0 ? (acc.spend / acc.revenue * 100).toFixed(2) : 0;
+                        acc.costPerOrder = acc.orders > 0 ? Math.round(acc.spend / acc.orders) : 0;
+                        return acc;
+                    }, { spend: 0, mess: 0, costPerMess: 0, orders: 0, revenue: 0, conversionRate: 0, costPerRevenue: 0, costPerOrder: 0 });
+                    
+                    const exportData = [
+                        {
+                            [isCombinedTab ? 'Mã SP/Set' : 'Mã SP']: 'Tổng',
+                            'Số ngày chạy': '-',
+                            'Chi phí (VND)': total.spend,
+                            'Số Mess': total.mess,
+                            'Chi phí/Mess': total.costPerMess,
+                            'Số lượng bán': total.orders,
+                            'Doanh số (VND)': total.revenue,
+                            'Tỉ lệ chốt (%)': total.conversionRate,
+                            '% Chi phí/Doanh số': total.costPerRevenue,
+                            'Chi phí/SL Bán': total.costPerOrder
+                        },
+                        ...data.map(r => ({
+                            [isCombinedTab ? 'Mã SP/Set' : 'Mã SP']: r.parentCode,
+                            'Số ngày chạy': r.days,
+                            'Chi phí (VND)': r.spend,
+                            'Số Mess': r.mess,
+                            'Chi phí/Mess': r.costPerMess,
+                            'Số lượng bán': r.orders,
+                            'Doanh số (VND)': r.revenue,
+                            'Tỉ lệ chốt (%)': r.conversionRate,
+                            '% Chi phí/Doanh số': r.costPerRevenue,
+                            'Chi phí/SL Bán': r.costPerOrder
+                        }))
+                    ];
+                    
+                    const ws = XLSX.utils.json_to_sheet(exportData, {
+                        header: [
+                            isCombinedTab ? 'Mã SP/Set' : 'Mã SP',
+                            'Số ngày chạy',
+                            'Chi phí (VND)',
+                            'Số Mess',
+                            'Chi phí/Mess',
+                            'Số lượng bán',
+                            'Doanh số (VND)',
+                            'Tỉ lệ chốt (%)',
+                            '% Chi phí/Doanh số',
+                            'Chi phí/SL Bán'
+                        ]
+                    });
+                    
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, title);
+                    XLSX.writeFile(wb, `${title}.xlsx`);
+                };
+                
+                window.copyColumn = function(idPrefix, i) {
+                    const tableId = `output-${idPrefix}`;
+                    const rows = document.querySelectorAll(`#${tableId} table tbody tr`);
+                    const vals = Array.from(rows).map(r => r.cells[i].innerText);
+                    navigator.clipboard.writeText(vals.join('\n')).then(() => alert('Đã sao chép cột!')).catch(() => setError('Lỗi khi sao chép cột.'));
+                };
+                
+            } catch (e) {
+                console.error('Lỗi trong processFiles:', e);
+                setError('Đã xảy ra lỗi khi xử lý dữ liệu: ' + e.message);
+            }
+        }
+        
+        // Gán sự kiện click cho nút phân tích
+        document.getElementById('analyzeBtn').addEventListener('click', processFiles);
+    </script>
+</body>
+</html>
